@@ -70,6 +70,7 @@ async function run() {
   const mockPkgInfo = { unpackedSize: 100000, dependenciesCount: 3 };
   const heuristicSize = await fetchBundleSize('some-unknown-pkg-xyz-999', mockPkgInfo);
   assert(heuristicSize.size === 75000 && heuristicSize.gzip === 28000, 'Heuristic calculation applies 0.75 minified and 0.28 gzip ratio');
+  assert(heuristicSize.estimated === true, 'Heuristic calculation carries estimated: true');
 
   console.log(`\nResilience tests finished: ${passed} passed, ${failed} failed.\n`);
   if (failed > 0) process.exit(1);
