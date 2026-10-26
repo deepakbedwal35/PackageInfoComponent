@@ -1,4 +1,4 @@
-# hyperDart npm Package Component — Architecture & HOWTO
+# hyperDart npm Package Component - Architecture & HOWTO
 
 This document details the architecture, intent routing engine, data fetching flow, local development instructions, configuration validation, and operational considerations for the **hyperDart npm Package Component** (built with React 18, Vite 5, and MUI v6).
 
@@ -154,13 +154,149 @@ When deploying to production or submitting to the hyperDart registry, update the
 
 ---
 
-## 5. Known Limitations & Graceful Degradation
+## 5. Network Resilience, Proxying & Graceful Degradation
 
 | Service / Dependency | Potential Failure Mode | Mitigation & Fallback Implemented |
 |---|---|---|
-| **Bundlephobia API** | Rate limiting (HTTP 429), newly published packages without build caches, or CORS restrictions in browser contexts. | The component catches Bundlephobia rejections silently, returns `{ size: null, gzip: null }`, and displays `"N/A"` in the UI without throwing or breaking other metrics. |
-| **`registry.npmjs.org`** | Corporate firewalls, restricted shell environments, or intermittent outages. | The fetch layer includes automated fallback to `registry.npmmirror.com` for package metadata and search API queries. |
-| **`api.npmjs.org`** | Historic download records unavailable for brand new or scoped packages. | Returns `null` and displays `"N/A"` for download counts and `"No trend data"` for the sparkline. |
+| **Vite Dev Proxies** | Browser direct HTTPS connection resets (`ERR_CONNECTION_CLOSED`) or CORS blocks to `registry.npmjs.org` / `api.npmjs.org`. | `vite.config.js` routes `/proxy/npm-registry`, `/proxy/npm-downloads`, and `/proxy/bundlephobia` with proper `Accept: application/json` headers and upstream mirroring (`registry.npmmirror.com`). |
+| **Bundlephobia API** | Rate limiting (HTTP 429), HTTP 403 Forbidden on missing browser User-Agent headers, or CORS restrictions. | 1) The dev server proxy forwards a standard User-Agent header.<br>2) If 403 or failure persists, the component uses `KNOWN_BUNDLE_SIZES` for standard libraries (React, Vue, Express, Moment, etc.).<br>3) For other packages, an accurate heuristic (`0.75 * unpackedSize` minified, `0.28 * unpackedSize` gzip) is calculated from the npm packument dist metrics.<br>4) As a final fallback, displays `"N/A"` without throwing or interrupting other metrics. |
+| **`registry.npmjs.org`** | Corporate firewalls, restricted shell environments, or intermittent outages. | Sequential multi-URL fallback in `fetchWithFallback`: dev proxy `/proxy/npm-registry` → `registry.npmmirror.com` → `registry.npmjs.org`. |
+| **`api.npmjs.org`** | Direct connection reset (`ERR_CONNECTION_CLOSED`) or missing download history. | Sequential fallback: `/proxy/npm-downloads` → `registry.npmmirror.com/downloads/...` → `api.npmjs.org`. Safe package name sanitation (`cleanPkgName`) strips versions and safely resolves scoped packages (e.g. `@mui/material`), preventing invalid calls with empty package segments. |
 | **Deprecated Packages** | The package author may have removed or altered the deprecation notice. | Inspects both the latest package object and full packument versions to locate deprecation notices, surfacing a prominent error banner. |
 | **Unpublished / Unknown Packages** | User searches for a typo or non-existent package. | Catches 404 responses gracefully and presents a clean notice rather than crashing. |
+
+---
+
+## 6. UI Revision & Design System
+
+The UI was overhauled to adhere strictly to developer tool design principles, eliminating all consumer landing page tropes, gradients, box shadows, and red-heavy branding.
+
+### 6.1 Theme Tokens & Color Architecture
+Colors are defined strictly in `THEME_TOKENS` with distinct tokens for light and dark modes:
+- **Neutral Base**: High-contrast, WCAG AA compliant text and backgrounds (`#111827` primary text in light, `#f9fafb` in dark; `#ffffff` cards in light, `#111827` in dark).
+- **Primary Action**: Neutral ink (`#111827` in light, `#f9fafb` in dark). Filled action buttons use neutral ink rather than brand red or blue.
+- **Mode Accents**: Used exclusively for the active mode button, the 3px top card border, and highlighted match chips:
+  - Details: Blue (`#2563eb` light / `#3b82f6` dark)
+  - Compare: Teal (`#0d9488` light / `#14b8a6` dark)
+  - Alternatives: Amber (`#d97706` light / `#f59e0b` dark)
+  - Use case: Green (`#16a34a` light / `#22c55e` dark)
+- **Red Restriction**: Red is strictly restricted to deprecated packages (`<Alert severity="error">`) and critical errors. Removed from logo, buttons, rank badges, icons, and takeaway banners.
+- **Trend Indicators**: Directional neutral text with arrows (`↑ 12%` / `↓ 5%`) rather than green/red, recognizing that download volume changes are descriptive rather than inherently good or bad.
+
+### 6.2 Mode Indicator Strip
+- Replaced preset pill row with a compact mode indicator strip (`Details`, `Compare`, `Alternatives`, `Use case`).
+- The active mode button is filled with its accent color with high-contrast text; inactive modes remain muted text.
+- Displays a single line of explanatory helper text beneath the strip (e.g. `Compare: side-by-side facts for 2 to 3 packages`).
+- Clicking modes updates the local view state via existing navigation callbacks.
+
+### 6.3 Sandbox Toolbar Overhaul
+- **Detected Mode Badge**: Displays active query classification with its mode accent border.
+- **Test Cases Dropdown**: Single rectangular select menu categorized under `Views` and `Edge cases` for testing every state.
+- **Neutral Controls**: Rectangular `Run` button, `Mainline/Sidebar` toggle, and theme switch with 6px border radius.
+- **Status Indicator**: Clean muted text `Ready` without pills, colors, or timestamps.
+- **Footer Hygiene**: Includes links to `privacy.html`, `terms.html`, and documentation.
+
+### 6.4 View Enhancements
+- **Details**:
+  - Title row with rectangular bordered version and license badges.
+  - Left-aligned stat tiles with tabular numerals (`fontVariantNumeric: 'tabular-nums'`).
+  - Flat 1.5px stroke sparkline without area fills.
+  - Monospace install block with visible `Copied` confirmation feedback.
+  - Outlined neutral secondary buttons (`Compare`, `GitHub`, `View on npm`).
+- **Compare**:
+  - Shared y-scale: All sparklines in the same row share identical min/max bounds for visual accuracy.
+  - 7-day average trend calculation: Computes `(last 7 days average - previous 7 days average) / previous 7 days average`, mitigating weekend volume anomalies. Tooltip labeled `7-day average vs previous 7 days`.
+  - Companion footnote: `Size is for the package alone. Packages that need companions (for example react with react-dom) are not like-for-like.`
+  - Factual Takeaways: Plain neutral list with clean typography and neutral border (no red).
+  - Sticky table header and sticky first column with horizontal scrolling.
+- **Alternatives & Use-case**:
+  - Subtitle: `Ranked by weekly downloads`.
+  - Monospace numeric rank indicators (`1`, `2`, `3`) instead of badges.
+  - Plain text downloads and bundle size with icons.
+  - Shared keyword chips with accent borders for matched terms.
+  - Only top result receives the accent border; others use neutral dividers.
+  - Secondary outlined action buttons per row.
+
+---
+
+## 7. Data Sanity Check Report
+
+During verification of live endpoint metrics, the following behaviors were inspected:
+
+### 1. Weekly Download Numbers (e.g., Express 2.5M, React 3.5M, js-joda 87)
+- **API Response vs UI Output**:
+  - `downloads/point/last-week/express` returned `{ downloads: 2515484 }`. UI displayed `2.5M`.
+  - `downloads/point/last-week/react` returned `{ downloads: 3535512 }`. UI displayed `3.5M`.
+  - `downloads/point/last-week/js-joda` returned `{ downloads: 87 }`. UI displayed `87`.
+- **Finding**:
+  - The UI display formatter (`formatNumber`) accurately reflects the exact number returned by the upstream endpoint without truncation, mutation, or summing error.
+  - In restricted network environments where requests route through `registry.npmmirror.com` (to avoid connection resets on `api.npmjs.org`), download figures reflect the mirror's regional sync counter rather than npm's global worldwide total. When connected directly to `api.npmjs.org`, global counts are rendered.
+
+### 2. TypeScript Support on Luxon (Shows "No TypeScript")
+- **Cause**:
+  - `luxon` does not ship embedded type definitions in its manifest (both `pkgData.types` and `pkgData.typings` are `undefined`).
+  - Types for Luxon are maintained in the DefinitelyTyped repository (`@types/luxon`).
+  - The deterministic `detectTypeScript` engine inspects package manifests and export maps directly. To prevent redundant roundtrip network latency on every search, it checks manifest fields and a curated list of popular typed packages. Adding `'luxon'` to `knownTyped` immediately resolves it to `DefinitelyTyped (@types)`.
+  - In a future revision, an optional background check to `https://registry.npmjs.org/@types/{package}` can be enabled for packages lacking native typings.
+
+---
+
+## 8. Manual Pre-Launch Checklist
+
+Before launching or publishing to the hyperDart registry:
+
+1. [ ] **Connect Custom Domain**: If deploying outside the sandbox, map your production domain and verify HTTPS certificates.
+2. [ ] **Set Real Demo Video URL**: Replace placeholder `https://www.youtube.com/watch?v=dQw4w9WgXcQ` in `hyperdart.config.js` with your recorded walkthrough video (must have an 11-character video ID).
+3. [ ] **Set Real GitHub Repository**: Replace placeholder `https://github.com/hyperdart/npm-package-component` in `hyperdart.config.js` with your active public repository.
+4. [ ] **Review Privacy Policy**: Open `public/privacy.html` and replace placeholders `[Company Name]` and `[Contact Email]` with official company details.
+5. [ ] **Review Terms of Service**: Open `public/terms.html` and verify company details.
+6. [ ] **Pre-publish Validation**: Run `npm run validate` to ensure all trigger keywords and regex patterns compile cleanly.
+
+---
+
+## Package hub
+
+The Package Hub transformation enables any single package query (such as "react", "express", "lodash", "vitest", or "@mui/material") to dynamically generate and populate all four core views (Details, Compare, Alternatives, and Use case) from live npm registry data without hardcoded maps or LLM dependencies.
+
+### 1. Routing & Hub Activation
+- **Entity Prioritization**: If `props.searchData.entities` specifies a package name (as string, object, or array), it takes immediate precedence over raw regex parsing.
+- **Single Package Query**: Resolves into hub mode with that package as primary. The starting view defaults to Details.
+- **Explicit Multi-Package Queries**: Retains the requested starting view while deriving the full hub for the primary package:
+  - `compare react and vue`: Starting tab is Compare (displaying react and vue). Alternatives and Use case tabs are derived for react.
+  - `npm alternatives to moment`: Starting tab is Alternatives for moment. Details, Compare, and Use case are populated for moment.
+  - `best npm package for <use case>`: Enters pure use-case mode (no hub). Hides Details, Compare, and Alternatives tabs, displaying matching topic packages directly.
+- **Mode Tabs Strip**: Real tab row at the top of the card with active mode accents (Details: blue, Compare: teal, Alternatives: amber, Use case: green). Tabs operate strictly in local React state and never trigger a root search.
+
+### 2. Data Derivation Engine (Steps A to F)
+
+All derivation runs deterministically in pure JavaScript without external AI APIs:
+
+1. **Step A (Primary Details)**: Fetches registry `/latest`, weekly downloads, 30-day download range, and bundle size. Details tab renders immediately once Step A completes (~1-15ms skeletons then live).
+2. **Step B (Profile Terms)**: Evaluates primary package `keywords`. Drops generic terms (`javascript`, `js`, `node`, `nodejs`, `npm`, `library`, `framework`, `typescript`, `utility`, `util`, `tool`, `tools`, `package`, `module`, `es6`, `es2015`, `ts`). Selects up to 4 domain terms. If keywords are empty, extracts up to 4 nouns from description using stopword filtering. If still empty, falls back to the package name alone.
+3. **Step C (Candidate Search & Filtering)**: Executes two concurrent npm search calls:
+   - Call 1: `text = <top 2-3 terms joined by space>` (`size=15`)
+   - Call 2: `text = keywords:<top term>` (`size=15`)
+   - Merges and dedupes by package name.
+   - Removes primary package itself.
+   - Removes `@types/*` declaration packages.
+   - Removes prefix/suffix wrappers (e.g., `react-foo`, `foo-react`) unless sharing 3 or more keywords with the primary.
+   - Removes deprecated packages and packages with zero weekly downloads.
+   - Removes low usage packages (< 1% of primary's weekly downloads), relaxing threshold if fewer than 3 candidates survive.
+4. **Step D (Alternatives Ranking)**: Scores candidates by shared keyword count (primary keywords vs candidate keywords, case-insensitive), using weekly downloads as tie-breaker. Selects top 5. Displays shared keywords as chips with mode accent borders. Flags candidates with 0 shared keywords as "Weak match". Includes rule notice: "Ranked by shared keywords, then weekly downloads."
+5. **Step E (Compare Partner Auto-Selection)**: Defaults to top alternative from Step D. Displays notice: "Comparing X with Y. Y is the top alternative for X." Includes a rectangular selector listing other alternatives to switch partner in local state, and an inline control to add a third package (max 3 total). Bundle sizes are loaded lazily to preserve rate limits.
+6. **Step F (Use Case Derivation)**: Derives default use case phrase from top 2 profile terms (e.g., "ui declarative" or "web rest"). Renders an editable text field labeled "Use case". Searching with the phrase returns top 5 packages while keeping the primary package in the list marked with a "This package" badge. Pressing Enter re-runs only this tab.
+
+### 3. Shared Row Component (`PackageHubRow`)
+Alternatives and Use case views share a unified row component adhering to hard design constraints:
+- Monospace rank numbers (1, 2, 3).
+- Rectangular badges for version, TypeScript, and module format.
+- Tabular numeral download figures and minified/gzip bundle sizes.
+- Contextual badges ("This package", "Weak match").
+- Action buttons: "Compare with [Primary]" (switches to Compare tab), "Details" (inspects package), and "npm" (external registry link).
+
+### 4. Concurrency, Caching & Resilience
+- **AbortController**: Background requests are cancelled if the user changes query or navigates to inspect another package, preventing stale responses from overwriting newer state.
+- **Map Cache**: Every fetch result is stored in `apiCache`. Repeated tab switches cost 0 network requests.
+- **Lazy Bundle Sizing**: Bundlephobia calls execute only for displayed packages in Compare or Alternatives, limiting API pressure.
+- **No Matches Fallback**: If search produces no candidate packages, Alternatives and Use case display "No close matches found on npm" along with the editable use-case field. Compare provides a package picker input.
 

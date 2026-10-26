@@ -62,6 +62,35 @@ export default defineConfig(({ command }) => {
         "Access-Control-Allow-Origin": "*",
       },
       proxy: {
+        '/proxy/npm-registry': {
+          target: 'https://registry.npmmirror.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/proxy\/npm-registry/, ''),
+          secure: true,
+          headers: {
+            'Accept': 'application/json'
+          }
+        },
+        '/proxy/npm-downloads': {
+          target: 'https://registry.npmmirror.com/downloads',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/proxy\/npm-downloads/, ''),
+          secure: true,
+          headers: {
+            'Accept': 'application/json'
+          }
+        },
+        '/proxy/bundlephobia': {
+          target: 'https://bundlephobia.com/api',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/proxy\/bundlephobia/, ''),
+          secure: true,
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://bundlephobia.com/'
+          }
+        },
         '/nodeapi': {
           target: 'https://dev.hyperdart.com',
           changeOrigin: true,

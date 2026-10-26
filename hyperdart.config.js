@@ -41,7 +41,7 @@ export default {
   info: {
     description: 'Standalone npm package search, version compare, alternatives finder, and smart use-case recommender'
   },
-  github: 'https://github.com/hyperdart/npm-package-component',
-  demovideo: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  demoVideo: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+  github: 'https://github.com/deepakbedwal35/PackageInfoComponent',
+  demovideo: 'https://youtu.be/Md5F9OndVt0',
+ 
 };
