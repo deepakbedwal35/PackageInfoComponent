@@ -1,169 +1,198 @@
-# hyperDart npm Package Component
+# hyperdart-npm-package
 
-A standalone, ultra-low-latency developer component for the hyperDart search platform. Built with React 18, Vite 5, and Material UI v6, it parses natural-language npm queries using deterministic regex and renders package details, side-by-side comparisons, ranked alternatives, and use-case recommendations from live npm registry data.
+A standalone HyperDart search component for developers that displays npm package details, side-by-side comparisons, alternatives, and use-case recommendations from live registry data.
 
-Zero external AI/LLM dependencies are used: all routing, classification, term profiling, candidate discovery, and metric comparisons are deterministic, fast, and resilient.
+| Item | Details |
+|---|---|
+| Demo Video | https://youtu.be/Ai-L7W6o2OM |
+| Repository | https://github.com/deepakbedwal35/PackageInfoComponent |
+| Placements | Mainline (960px max width) and Sidebar (380px max width) |
+| Themes | Light mode and dark mode |
 
----
+## What It Does
 
-## Features Added
+This component runs inside the HyperDart search engine when a search query matches npm package keywords or patterns. It deterministically classifies queries into one of four views: Details, Compare, Alternatives, or Use case. All data is fetched directly from npm APIs on the client, with zero runtime AI or LLM dependencies.
 
-### 1. Package Hub Architecture
-A single package query (e.g. `react`, `express`, `lodash`, `@mui/material`) automatically activates Hub Mode and populates all four core views for that package simultaneously:
-- **Entity Prioritization**: If `props.searchData.entities` specifies a package name, it takes precedence over raw regex parsing.
-- **Unified Derivation Pipeline**: Resolves the primary package once, derives profile terms, and fetches a single shared candidate pool for Alternatives, Compare, and Use Case views.
-- **Local Tab Navigation**: A mode tab bar allows toggling between Details, Compare, Alternatives, and Use case without re-running root searches or mutating the search query.
-- **Inspect Drilldown**: Clicking "Details" on any candidate inspects that package locally with a breadcrumb back-navigation button.
+| Example Query | View Opened | Key Information Shown |
+|---|---|---|
+| `npm express` | Details | Version, license, TypeScript/ESM flags, weekly downloads, bundle size, install command |
+| `latest version of react` | Details | Version banner highlighted, publish date, dependency count |
+| `compare react and vue` | Compare | Side-by-side table with metrics, shared-scale sparklines, and factual takeaways |
+| `compare express, fastify, koa` | Compare | Three-column comparative table with column removal and retry options |
+| `express 4 vs 5` | Compare | Version-aware comparison between major releases with shared package downloads |
+| `npm alternatives to moment` | Alternatives | Modern replacements ranked by keyword overlap and weekly downloads |
+| `best npm package for date formatting` | Use case | Top recommendations ranked by npm search relevance and weekly downloads |
+| `npm request` | Details | Prominent deprecation alert showing the author's deprecation message |
 
-### 2. Four Core Views
+## Features by View
 
-#### Details View
-- **Release Metadata**: Latest version, release date, license, and dependency count.
-- **Ecosystem Declarations**: Automatic detection of Native TypeScript (`.d.ts`), DefinitelyTyped (`@types/`), Pure ESM, Dual ESM/CJS, and CommonJS.
-- **Operational Metrics**: Weekly download count (tabular numerals) and bundle size (minified and gzip).
-- **Interactive Install Snippet**: One-click monospace install command (`npm i <package>`) with active copy feedback.
-- **30-Day Download Sparkline**: Flat stroke SVG sparkline tracking 30-day download activity.
-- **Deprecation Banner**: Prominent warning banner displayed when a package or version has been marked deprecated by its author.
+### Details
+- Displays version, license, release date, unpacked size, and dependency count.
+- Detects TypeScript (native `.d.ts` or DefinitelyTyped `@types/`) and module format (Pure ESM, Dual ESM/CJS, or CommonJS).
+- Shows weekly downloads with tabular numerals, bundle size (minified and gzip), and a 30-day SVG download sparkline.
+- Provides a one-click monospace install command (`npm i <package>`) with temporary copy confirmation.
+- Displays an error alert banner when a package is marked deprecated.
+- Includes local buttons to switch to Compare or Alternatives for the package without triggering a new search.
 
-#### Compare View
-- **Multi-Package Comparison**: Side-by-side comparison for 2 to 3 packages (or version comparisons such as `express 4 vs 5`).
-- **Auto-Selected Partner**: Automatically selects the #1 ranked alternative as the default comparison partner.
-- **Partner Selector**: Dropdown to switch the comparison partner among candidate alternatives or add a third package.
-- **Shared-Scale Sparklines**: Download sparklines share identical min/max Y-axis bounds across all packages in the row for visual comparison accuracy.
-- **7-Day Average Trend**: Mitigates weekend volume dips by calculating `(last 7 days average - previous 7 days average) / previous 7 days average` with tooltip explanation.
-- **Companion Footnote**: Clarifies that bundle size reflects the single package alone (e.g. React without react-dom).
-- **Factual Takeaways**: Neutral summary bullet points highlighting size differentials, download volume ratios, and release recency without bias.
+### Compare
+- Renders a side-by-side table for 2 to 3 packages or two versions of the same package.
+- Auto-selects the top alternative as the initial comparison partner if only one package was queried.
+- Supports switching partners via dropdown, adding a third package, or swapping/selecting versions.
+- Sparklines share identical Y-axis bounds across columns in the row so visual differences reflect real numbers.
+- Computes a 7-day average percentage change to smooth weekend download drops.
+- Generates neutral factual takeaways and includes an isolated error boundary per column with retry.
 
-#### Alternatives View
-- **Shared Keyword Ranking**: Candidates scored by count of matching non-generic keywords against the primary package, with weekly download count as tie-breaker.
-- **Matched Keyword Chips**: Visual chips with mode accent borders identifying shared domain tags.
-- **Match Confidence Indicator**: Candidates with zero keyword overlap are clearly badged as "Weak match".
-- **Action Buttons**: Quick-action buttons to "Compare with [Primary]", "Details" (inspect), and "npm" (external registry link).
+### Alternatives
+- Renders ranked replacements based on shared manifest keywords, breaking ties with weekly downloads.
+- Labels shared keyword tags with accent borders; badges packages with zero overlap as "Weak match".
+- Displays weekly download counts and minified/gzip bundle sizes for each candidate.
+- Includes inline actions to view package details in a sub-view, compare with the primary package, or open npmjs.com.
 
-#### Use Case View
-- **Natural Language Discovery**: Derives domain search phrases from primary package profile terms (or accepts custom queries like `best npm package for date formatting`).
-- **Editable Search Field**: Inline input allowing developers to tweak search phrases and re-query on Enter without modifying the global search bar.
-- **Primary Package Context**: Identifies and highlights the original package in the result list with a "This package" badge.
+### Use Case
+- Runs natural-language searches for problem descriptions (e.g. `best npm package for date formatting`).
+- Ranks candidates using a transparent blend: normalized npm search score and normalized log10 weekly downloads.
+- Subtitle clearly states "Ranked by npm search relevance and weekly downloads" without declaring any winner.
+- Clicking "Details" opens a sub-view with a "Back to results" button and a "Set as primary" action.
 
----
+## Design Decisions
 
-## 3. Network Resilience and Graceful Degradation
+- Answer first: Core answers (e.g., version banner, install snippet) render immediately above secondary metrics.
+- No invented winners: Factual comparisons avoid subjective labels or claiming that any library is "the best".
+- Shared-scale sparklines: 30-day download charts use identical Y-axis bounds across compared packages so visual slopes are accurate.
+- Flat developer-tool aesthetic: 1px borders, 4-6px border radii, no background gradients, and tabular numerals for vertical stability.
+- Responsive layout: Adapts between wide mainline (up to 960px) and compact sidebar (380-420px).
+- Theme tokens: Centralized token system supporting light and dark themes with dedicated mode accent colors.
 
-- **Multi-Tiered Registry Fallback**:
-  - Tier 1: Local Vite dev proxy (`/proxy/npm-registry`).
-  - Tier 2: Upstream registry mirror (`https://registry.npmmirror.com`).
-  - Tier 3: Primary npm registry (`https://registry.npmjs.org`).
-- **Bundlephobia Resilience**:
-  - Standard User-Agent forwarding through dev server proxy to avoid HTTP 403 Forbidden.
-  - Curated dictionary cache for standard packages.
-  - Accurate fallback heuristic (`0.75 * unpackedSize` minified, `0.28 * unpackedSize` gzip) when external size APIs are unavailable.
-  - Returns clean `N/A` without interrupting other metrics.
-- **Parameter Sanitization**:
-  - Strips version tags (e.g. `react@18.2.0` -> `react`) before requesting download stats.
-  - Safely handles scoped packages (`@mui/material`).
-  - Guards against empty or undefined queries, preventing malformed API requests.
-- **In-Memory Cache & Cancellation**:
-  - Global `apiCache` Map prevents duplicate network requests across tab switches.
-  - `AbortController` integration cancels inflight requests on new query submission.
+## Data Sources and Accuracy
 
----
+| Source | Endpoint | Data Provided |
+|---|---|---|
+| npm Registry | `https://registry.npmjs.org/<pkg>` | Version manifests, license, release dates, dependencies, deprecation notices |
+| npm Downloads API | `https://api.npmjs.org/downloads/point/last-week/<pkg>` | Weekly download totals |
+| npm Downloads API | `https://api.npmjs.org/downloads/range/last-month/<pkg>` | 30-day daily download series for sparklines |
+| npm Search API | `https://registry.npmjs.org/-/v1/search?text=<phrase>` | Search results and relevance score (`score.final`) |
+| Bundlephobia | `https://bundlephobia.com/api/size?package=<pkg>` | Minified and gzip bundle sizes |
+| npmmirror (Fallback) | `https://registry.npmmirror.com` | Registry and download fallback mirror when upstream is unreachable |
 
-## 4. UI and Design System (Developer Tool Aesthetic)
+### Accuracy Notes
+- Estimated bundle sizes: When Bundlephobia is slow or rate-limited, size is estimated from unpacked size (0.75 minified, 0.28 gzip ratio) and marked "Estimated".
+- Mirror fallback: When corporate firewalls or networks block direct npm registry endpoints, requests fallback to npmmirror.
+- Downloads are package-wide: npm does not record downloads per version; queries like `express 4 vs 5` show package-level download totals.
+- Heuristic ranking: Alternative ranking relies on manifest keywords and download volumes, not source code analysis.
 
-Strictly adheres to developer tool design standards:
-- **No Purples or Gradients**: Flat 1px borders replace drop shadows. Sparklines use single-stroke vectors with no area fills.
-- **Restricted Corner Radii**: Maximum 6px border radius on inputs, buttons, and chips; maximum 8px on cards.
-- **Neutral Primary Palette**: High-contrast neutral ink (`#111827` light / `#f9fafb` dark) for action buttons and text.
-- **Mode Accents**: Reserved strictly for the active mode tab, top card border, and matched keyword chips:
-  - Details: Blue (`#2563eb` light / `#3b82f6` dark)
-  - Compare: Teal (`#0d9488` light / `#14b8a6` dark)
-  - Alternatives: Amber (`#d97706` light / `#f59e0b` dark)
-  - Use case: Green (`#16a34a` light / `#22c55e` dark)
-- **Controlled Error Palette**: Red is reserved exclusively for deprecated packages and critical errors. Removed from logos, action buttons, rank numbers, and takeaway cards.
-- **Directional Neutral Trends**: Download trends use neutral text with arrows (`↑ 12%`, `↓ 5%`) rather than value-judgment green/red.
-- **Tabular Numerals**: Numeric metrics render using `fontVariantNumeric: 'tabular-nums'` for vertical column stability.
-- **WCAG AA Compliance**: High-contrast ratios maintained across light and dark modes.
+## Robustness
 
----
+- Caching: In-memory Map caches prevent duplicate network requests across tab switches and sub-view navigation.
+- Request cancellation: AbortController aborts ongoing HTTP requests when tabs switch or the query changes.
+- Fallbacks and timeouts: Requests race against timeouts; non-critical failures render "N/A" instead of crashing the UI.
+- Unknown packages: Invalid package names render an informative card without throwing unhandled exceptions.
+- Rate limiting: Download and search lookups cap concurrency (e.g. concurrency of 4 for use-case downloads).
+- Error boundaries: The root content and individual compare columns are wrapped in error boundaries with retry buttons.
 
-## 5. Development Sandbox Harness
+## Tech Stack and Libraries
 
-Located in `src/sandbox/main.jsx`:
-- **Query Persistence**: Query state is mirrored to the URL (`?q=<query>`) and `localStorage['hd_sandbox_query']`. Survives full page refreshes.
-- **Tab State Persistence**: Active tab is stored separately via URL hash (`#tab`) and `localStorage['hd_sandbox_tab']`. Tab switching never modifies the search query.
-- **Settings Persistence**: Theme (`hd_sandbox_theme`), layout (`hd_sandbox_layout`), and active test case (`hd_sandbox_case`) persist across refreshes.
-- **Preset Test Cases**: Dropdown menu covering all primary views and edge cases (`Null Data (Case 1)`, `Unmatched (Case 2)`).
-- **Layout Modes**: Live preview toggle between Mainline (full-width 960px) and Sidebar (compact 380px) contexts.
-- **Reset Action**: Toolbar "Reset" button clears all URL parameters and sandbox storage keys, reverting to clean default state.
+- React 18: Client-side component rendering and hooks (`useMemo`, `useCallback`, `useRef`, `useState`).
+- Vite 5: Dev server with proxy middleware and modern ES module production bundling.
+- Material UI (MUI) v6: Accessible base UI components customized to a flat developer-tool design.
+- MUI Icons: Lightweight SVG icons for metadata and actions.
+- No LLM runtime dependencies: All parsing, categorization, and ranking run client-side with deterministic algorithms.
 
----
-
-## 6. Project Structure
+## Project Structure
 
 ```
 .
-├── src/
-│   ├── frontend/
-│   │   ├── index.jsx           # Entry point wrapped with withHD HOC
-│   │   └── NewComponent.jsx    # Root component (Hub, views, fetching, theme)
-│   └── sandbox/                # Local dev sandbox harness
-│       ├── main.jsx            # Test harness with persistent controls
-│       └── index.css           # Sandbox root styling
-├── scripts/
-│   ├── test-component.js       # Unit tests (intent regex, formatting, TS/ESM)
-│   ├── test-network-resilience.js # Resilience tests (clean params, bundle heuristics)
-│   ├── test-package-hub.js     # Package Hub tests (profile terms, ranking, routing)
-│   └── validate-publish.js     # Platform pre-publish validation script
+├── hyperdart.config.js       # HyperDart triggers, placement, and module configuration
+├── index.html                # Local development HTML entry
+├── package.json              # Project dependencies, scripts, and publish settings
+├── resource.json             # Structured query schema for the HyperDart platform
+├── searchData.json           # Sample search queries for sandbox testing
+├── vite.config.js            # Vite build and dev proxy server configuration
+├── dist/                     # Production build output
+│   └── frontend/
+│       └── index.modern.js   # Built standalone ES module bundle
 ├── docs/
-│   └── HOWTO.md                # Comprehensive architecture and operations guide
-├── public/                     # Static assets, privacy policy, and terms
-├── hyperdart.config.js         # Platform discovery triggers and metadata
-├── vite.config.js              # Dev proxy and UMD/ES build config
-├── package.json
-└── README.md
+│   └── HOWTO.md              # Architecture and operations documentation
+├── public/                   # Static assets (terms, privacy, icons)
+├── scripts/
+│   ├── test-component.js     # Unit tests for routing, formatting, and tab logic
+│   ├── test-network-resilience.js # Resilience tests for API fallbacks and heuristics
+│   ├── test-package-hub.js   # Tests for term profiling and candidate ranking
+│   ├── test-query-transitions.js  # Tests for state transitions between queries
+│   └── validate-publish.js   # Pre-publish validation for hyperdart.config.js
+└── src/
+    ├── frontend/
+    │   ├── index.jsx         # Standalone entry point wrapped with withHD HOC
+    │   ├── NewComponent.jsx  # Main component orchestrator, hub setup, and mode tabs
+    │   ├── api/              # API clients for npm registry, downloads, search, and bundle size
+    │   ├── components/       # UI elements (sparkline, error boundary, tabs, skeletons)
+    │   │   └── views/        # Views for Details, Compare, Alternatives, Use Case, and Sandbox
+    │   ├── constants/        # Theme tokens, known bundle sizes, and stopwords
+    │   ├── hooks/            # Data fetching (usePackageHub) and drill-in (useSubView) hooks
+    │   └── lib/              # Intent parser, formatters, ranking algorithms, and detectors
+    └── sandbox/
+        ├── index.css         # Sandbox harness styling
+        └── main.jsx          # Interactive testbed with theme, query, and layout controls
 ```
 
----
+## Getting Started
 
-## 7. Commands
-
+### Local Development
 ```bash
 # Install dependencies
 npm install
 
-# Start local dev server (sandbox testbed at http://localhost:3000)
+# Start development server (opens at http://localhost:3000)
 npm run dev
 
-# Run all test suites (71 tests across 3 suites)
+# Run all test suites
 npm test
 
-# Build production bundle (dist/frontend/index.modern.js)
+# Build production bundle (outputs to dist/frontend/index.modern.js)
 npm run build
 
-# Validate hyperdart.config.js against platform requirements
+# Validate configuration
 npm run validate
 ```
 
----
+### Publishing
+1. Create the package in the HyperDart Partner Portal.
+2. Add your HyperDart auth token to `.npmrc`.
+3. Bump the patch version: `npm version patch`.
+4. Publish: `npm publish` (do not use `--ignore-scripts`, as `prepublishOnly` runs validation).
 
-## 8. Test Suites
+## Testing
 
-The project includes 71 automated tests across three specialized suites:
+Automated tests are divided into three suites executed via `npm test`:
+- `scripts/test-component.js`: 88 passing tests covering 14 hackathon query patterns, number/byte formatters, TypeScript/ESM detection, compare helpers, tab visibility, and use-case ranking.
+- `scripts/test-network-resilience.js`: 18 passing tests covering parameter sanitization, empty inputs, network errors, and bundle size estimation.
+- `scripts/test-package-hub.js`: 18 passing tests covering entity extraction, domain term extraction, and keyword overlap ranking.
 
-1. **`scripts/test-component.js` (36 tests)**:
-   - Intent routing regex for Details, Compare, Alternatives, and Use Case.
-   - Number and byte formatters (`formatBytes`, `formatNumber`, `formatDate`).
-   - TypeScript detection (embedded `.d.ts` vs DefinitelyTyped `@types/`).
-   - ESM detection (Pure ESM vs Dual ESM+CJS vs CommonJS).
+Total: 124 passing automated tests. Live API behavior was tested manually in the sandbox at `http://localhost:3000/`.
 
-2. **`scripts/test-network-resilience.js` (17 tests)**:
-   - Package name sanitization and version stripping.
-   - Missing/empty parameter safeguards.
-   - Error handling in `cachedFetch` and `fetchWithFallback`.
-   - Bundlephobia 403 handling and unpacked size ratio heuristics.
+## How to Add a Query Pattern
 
-3. **`scripts/test-package-hub.js` (18 tests)**:
-   - Entity package extraction from `searchData.entities`.
-   - Domain keyword extraction and generic word filtering.
-   - Candidate ranking by shared keyword overlap.
-   - Case-insensitive package resolution (`reACT` -> `react`).
+All query patterns are defined in `src/frontend/lib/parseIntent.js` inside the `parseIntent(query, entityNames = [])` function.
+
+To add a new pattern, insert a regex check before the generic fallbacks:
+
+```javascript
+// Example: match "bundle size of <package>"
+const sizeMatch = clean.match(/^(?:bundle\s+size\s+of|size\s+of)\s+([@a-z0-9_.-]+)$/i);
+if (sizeMatch && sizeMatch[1]) {
+  return { view: 'details', package: cleanPkgName(sizeMatch[1]), focus: 'size', rawQuery: clean };
+}
+```
+
+Add the pattern to `query_format.regex` in `hyperdart.config.js` and add a test case in `scripts/test-component.js`.
+
+## Known Limitations
+
+- Bundlephobia rate limits: Bundlephobia may rate-limit or return 403 on high-volume traffic; the component falls back to heuristics or displays N/A.
+- Package-wide download metrics: The npm registry does not track downloads per version; version comparisons show total package downloads.
+- Keyword overlap heuristic: Alternatives ranking depends on manifest keywords; packages with missing keywords may rank lower.
+- Upstream mirror lag: When using the npmmirror fallback, manifest and download figures can experience a short sync delay.
+- External API availability: Registry search and download data depend on third-party service uptime.
+
+## AI Tools Used
+
+TODO (author to complete): Which AI tools I used (for example Gemini/Antigravity for code generation and refactoring, Claude for planning and prompts), what they generated, and what I wrote, changed or reviewed myself. I can explain every part of this code.
