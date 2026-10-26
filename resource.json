@@ -1,0 +1,69 @@
+{
+  "title": "NPM Package Resource",
+  "description": "Provides structured information about npm packages, including version metadata, bundle size, weekly downloads, alternatives, comparisons, and use-case recommendations.",
+  "componentScope": {
+    "supportedIntents": [
+      {
+        "intent": "package-details",
+        "description": "Retrieve comprehensive details about a specific npm package including latest release, license, dependencies, TS/ESM support, and deprecation status.",
+        "example": [
+          "npm express",
+          "package info lodash",
+          "request npm",
+          "@mui/material"
+        ]
+      },
+      {
+        "intent": "package-compare",
+        "description": "Side-by-side comparison of 2-3 packages or version-aware releases with bundle sizes, download sparklines, and factual takeaways.",
+        "example": [
+          "compare react and vue",
+          "express 4 vs 5",
+          "pnpm vs npm vs yarn"
+        ]
+      },
+      {
+        "intent": "package-alternatives",
+        "description": "Ranked alternatives for a given package with shared keywords, weekly downloads, and bundle size comparisons.",
+        "example": [
+          "npm alternatives to moment",
+          "alternatives to axios",
+          "lodash alternatives"
+        ]
+      },
+      {
+        "intent": "package-usecase",
+        "description": "Query npm registry search API for broad use cases or problem descriptions and recommend top libraries.",
+        "example": [
+          "best npm package for date formatting",
+          "npm package for state management",
+          "csv parser npm"
+        ]
+      }
+    ]
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Raw user search query"
+      },
+      "intent": {
+        "type": "string",
+        "enum": ["package-details", "package-compare", "package-alternatives", "package-usecase"]
+      },
+      "entities": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" },
+            "type": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

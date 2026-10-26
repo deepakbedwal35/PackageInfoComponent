@@ -1,0 +1,83 @@
+[
+  {
+    "query": "npm express",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "express",
+        "entityType": "NPM_PACKAGE",
+        "entityInfo": {
+          "name": "express"
+        }
+      }
+    ]
+  },
+  {
+    "query": "compare react and vue",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "react",
+        "entityType": "NPM_PACKAGE"
+      },
+      {
+        "word": "vue",
+        "entityType": "NPM_PACKAGE"
+      }
+    ]
+  },
+  {
+    "query": "express 4 vs 5",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "express",
+        "entityType": "NPM_PACKAGE",
+        "versions": ["4", "5"]
+      }
+    ]
+  },
+  {
+    "query": "npm alternatives to moment",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "moment",
+        "entityType": "NPM_PACKAGE"
+      }
+    ]
+  },
+  {
+    "query": "best npm package for date formatting",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "date formatting",
+        "entityType": "USE_CASE"
+      }
+    ]
+  },
+  {
+    "query": "npm request",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "request",
+        "entityType": "NPM_PACKAGE",
+        "entityInfo": {
+          "deprecated": true
+        }
+      }
+    ]
+  },
+  {
+    "query": "package info @mui/material",
+    "component": "hyperdart-npm-package",
+    "entities": [
+      {
+        "word": "@mui/material",
+        "entityType": "NPM_PACKAGE"
+      }
+    ]
+  }
+]
